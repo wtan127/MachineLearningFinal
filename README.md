@@ -1,15 +1,12 @@
 # MachineLearningFinal
 Machine Learning used to predict how well a dumbbell activity is done
 
----
-title: "Mobile Activity Prediction"
-author: "wtan"
-date: "March 25, 2016"
-output: html_document
----
-
 ###Executive Summary
-10 Participants were asked to use dumbbells in 5 different ways (Class A-E), where Class A means that the exercises were performed correctly, and the other classes represent common mistakes. (source: http://groupware.les.inf.puc-rio.br/har).
+10 Participants were asked to use dumbbells in 5 different ways (Class A-E), where Class A means that the exercises were performed correctly, and the other classes represent common mistakes. (source: http://groupware.les.inf.puc-rio.br/har). The dataset was cleaned from 160 variables to 10 based on the following:
+- Inconsistencies between training and test set characteristics
+- "families" of similar data points, where the plots against the classes looked similar
+- To shorten run time on the computer.
+After looking at trees and random forests, the random forest was able to corretly predict 20/20 of the test set. Boosting was tried multiple times, but was never able to finish running on my very old computer.
 
 ###Data Processing
 ```{r echo=TRUE}
@@ -23,7 +20,6 @@ download.file(fileURL2, destfile= "test.csv")
 train <- read.csv("train.csv")
 test <- read.csv("test.csv")
 ```
-
 There are 6 people in the train set. There are 20 different time stamps.
 
 ###Exploratory Analysis
@@ -68,8 +64,7 @@ train2$classe <- train$classe
 test2$classe <- as.factor(rep("A", 20))
 ```
 
-#running the caret packages are too time intensive and keep crashing my computer, so I'm going to narrow down the possible columns further. I ran plots against classe for all the factors and decided on the following.
-Many variables don't affect the outcome (like date), and many are mostly blank.
+Running the caret packages are too time intensive and keep crashing my computer, so first I ran plots against classe for all the variables and decided on the following visually based on if there are statistical outliers in at least 1 of the classes.
 ```{r echo=TRUE}
 nameindex <- names(train2)
 x <- nameindex[c(7,8, 10, 11, 16, 17, 19, 20, 21, 23, 24, 25, 28, 31, 32, 34, 36, 37,42, 46, 47, 48, 53, 56, 57)]
@@ -77,44 +72,36 @@ trainsub <- select(train2, c(7,8, 10, 11, 16, 17, 19, 20, 21, 23, 24, 25, 28, 31
 testsub <- select(test2, c(7,8, 10, 11, 16, 17, 19, 20, 21, 23, 24, 25, 28, 31, 32, 34, 36, 37,42, 46, 47, 48, 53, 56, 57))
 print(x)
 ```
-I shortened the number of factors even more because this is the only thing I can do to keep my R studio from crashing over and over again.
+My computer was still crashing, so I narrowed down the columns further into "families", picking out only the ones that seem to show the most statistical significance.
 ```{r echo=TRUE}
 x2 <- nameindex[c(10, 11, 19, 20, 31, 34, 36, 46, 47, 53, 57)]
 trainsub2 <- select(train2, c(10, 11, 19, 20, 31, 34, 36, 46, 47, 53, 57))
 testsub2 <- select(test2, c(10, 11, 19, 20, 31, 34, 36, 46, 47, 53, 57))
 print(x2)
 ```
+
 ###Method
 There are a lot of factors that go into the classe variable. When dealing with the data set, it seems useful to use random forests or boosting methods. I tried to run random forest and gbm boosting with the full dataset, but my very old computer simply cannot handle it. It crashed multiple times times.
-  
-- Using the new dataset, this should be much faster. We are going to try 3 methods: Tree (rpart), Random Forest (rf), and Boosting (gbm).
-- Cross Validation: I used 5-fold cross validation, mostly becuase of the time constraint.
+
+Cross Validation: I used 5-fold cross validation, mostly because of the time constraint.
 ```{r echo=TRUE}
 modtree <- train(classe~., method="rpart", data=trainsub, trControl=trainControl(method="cv", number=5))
 #print(modtree$finalModel)
 predict(modtree, testsub)
 ```
-#Results were: ACCAACCCACACBACBAAAB
 ```{r stillsuperslowrf, echo=TRUE, cache=TRUE}
 modrf <- train(classe~., method="rf", data=trainsub2, trControl=trainControl(method="cv", number=5))
 predict(modrf, testsub2)
 ```
-#Results were: BABAAEDBAABCBAEEABBB  
-gbm is recommended to be used without adjusting the trainControl.
-```{r stillsuperslowgbm, echo=TRUE, cache=TRUE}
+gbm is recommended to be used without adjusting the trainControl. I would have wanted to run this, but it is simply not possible given my resources.
 modgbm <- train(classe~., method="gbm", data=trainsub2, verbose=FALSE)
 predict(modgbm, testsub2)
-```
+
 
 ###Results
-The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. 
+The results from the Random Forest was particularly good on the short test data set. It was correct on 20 out of the 20 test samples. The Tree was less accurate, only predicting 8 out of 20, possibly because it was taking the "root" variable, and was thrown off by the null hypothesis of "A" that I put into the classe variable. 
 
-The expected out of sample error is probably not fairly significant, because a lot of the relationships are close with very wide 25-75%iles. I am guessing that boosting would give the best results.
-
-Reults from quiz:
-Tree: 8/20
-Random Forest: 20/20
-
+The expected out of sample error will be more significant for more data points. I shorted the data greatly, and was not able to run all of the tests I wanted. I am guessing that boosting would give good results as well, and a combination of boosting and random forest would be net better than either. This is because there were a lot of variables with a wide range of 25%-75%ile that overlap between classes, making them relatively weak predictors. Boosting is specifically created to help in such situations.
 
 
 ###Appendix
@@ -130,4 +117,5 @@ Example of one of the plots I ran to pick the variables
 ```{r echo=TRUE}
 plot(train2$classe, train2[ ,8])
 ```
-#38, 39, 40, 51, 52 would need to be log10
+
+variables 38, 39, 40, 51, 52 would need to be log10 I left them out because I did not need them.
